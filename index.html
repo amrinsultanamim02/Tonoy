@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hi Tonoy Bador, Ssup?</title>
+<style>
+:root{--bg:#f3f0ff;--fg:#1d1640;--accent:#6c4cf5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14102b;--fg:#f1edff;--accent:#a592ff}}
+:root[data-theme="dark"]{--bg:#14102b;--fg:#f1edff;--accent:#a592ff}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}
+main{max-width:640px;width:100%}
+h1{font-size:clamp(2.2rem,8vw,5rem);line-height:1.1;margin:0;font-weight:800;letter-spacing:-.02em}
+#r{margin:1rem 0 0;color:var(--accent);font-size:clamp(1.2rem,4vw,2rem);font-weight:600;overflow-wrap:anywhere}
+button{margin-top:2rem;font:inherit;font-weight:600;padding:.7rem 1.4rem;border-radius:999px;border:2px solid var(--accent);background:transparent;color:var(--fg);cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+[hidden]{display:none!important}
+.row{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap}
+#w{background:var(--accent);color:var(--bg)}
+#box{margin-top:1.5rem;display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap}
+input{font:inherit;padding:.7rem 1rem;border-radius:999px;border:2px solid var(--accent);background:transparent;color:var(--fg);min-width:0;width:min(320px,100%)}
+#box button{margin-top:0}
+#note{margin:.75rem 0 0;font-size:.95rem;opacity:.8}
+#inbox{margin-top:3rem;text-align:left;border-top:2px solid var(--accent);padding-top:1rem}
+#inbox h2{margin:0 0 .5rem;font-size:1.1rem}
+#list{margin:0;padding-left:1.2rem}
+#list li{margin:.35rem 0;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<h1>Hi Tonoy Bador,</h1>
+<p id="r">Ssup?</p>
+<div class="row">
+<button id="b">Not much, you?</button>
+<button id="w">Write your own reply</button>
+</div>
+<div id="box" hidden>
+<input id="t" type="text" maxlength="200" placeholder="Type your reply" aria-label="Your reply">
+<button id="s">Send reply</button>
+</div>
+<div id="done" hidden>
+<button id="share">Send this reply to me</button>
+<p id="note" role="status"></p>
+</div>
+<section id="inbox" hidden>
+<h2>Replies received</h2>
+<ul id="list"></ul>
+<p id="empty">No replies yet.</p>
+</section>
+</main>
+<script>
+var r=document.getElementById('r'),row=document.querySelector('.row'),box=document.getElementById('box'),t=document.getElementById('t'),done=document.getElementById('done'),note=document.getElementById('note');
+var db=null,uid=null,lastReply='';
+function finish(v){
+lastReply=v;r.textContent=v;row.hidden=true;box.hidden=true;done.hidden=false;
+if(db&&uid){
+try{db.doc('replies/'+uid).set({text:v,at:Date.now()}).then(function(){note.textContent='Saved. It will show up on the owner\u2019s page.';}).catch(function(){note.textContent='';});}catch(e){}
+}
+}
+document.getElementById('b').addEventListener('click',function(){finish('Same here. Good to see you!');});
+document.getElementById('w').addEventListener('click',function(){row.hidden=true;box.hidden=false;t.focus();});
+function send(){var v=t.value.trim();if(!v){t.focus();return;}finish(v);}
+document.getElementById('s').addEventListener('click',send);
+t.addEventListener('keydown',function(e){if(e.key==='Enter'){send();}});
+document.getElementById('share').addEventListener('click',function(){
+var msg='Reply to \u201cHi Tonoy Bador, Ssup?\u201d: '+lastReply;
+if(navigator.share){navigator.share({text:msg}).catch(function(){});return;}
+try{navigator.clipboard.writeText(msg).then(function(){note.textContent='Copied. Paste it in a chat and send it.';},function(){note.textContent='Could not copy. Select the reply above and copy it.';});}
+catch(e){note.textContent='Could not copy. Select the reply above and copy it.';}
+});
+(async function(){
+try{
+if(!window.claude){return;}
+var user=await claude.use('user');
+db=await claude.use('db');
+try{uid=await user.id();}catch(e){}
+if(db&&user&&user.canEdit()){
+document.getElementById('inbox').hidden=false;
+db.collection('replies').orderBy('at','desc').limit(50).onSnapshot(function(snap){
+var ul=document.getElementById('list');ul.textContent='';
+snap.docs.forEach(function(d){var x=d.data();var li=document.createElement('li');li.textContent=x.text;ul.appendChild(li);});
+document.getElementById('empty').hidden=snap.size>0;
+},function(){});
+}
+}catch(e){}
+})();
+</script>
+</body>
+</html>
